@@ -1,11 +1,7 @@
 package tn.esprit.autoloc.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
 import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -32,5 +28,7 @@ public class Maintenance {
 
     @Column(nullable = false, length = 500)
     private String description;
+    @ManyToOne
+    private Vehicule vehicule;
 }
 

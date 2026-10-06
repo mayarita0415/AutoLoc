@@ -22,3 +22,4 @@
 ## 2) Anomalies SonarQube for IDE et plan de correction
 ![img.png](img.png)
 
+- Les points qualite Sonar sont traces avec leur correction dans cette note.

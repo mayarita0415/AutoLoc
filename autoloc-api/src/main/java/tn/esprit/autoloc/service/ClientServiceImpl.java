@@ -1,52 +1,49 @@
 package tn.esprit.autoloc.service;
 
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tn.esprit.autoloc.domain.Client;
 import tn.esprit.autoloc.exception.ResourceNotFoundException;
 import tn.esprit.autoloc.repository.IClientRepository;
+import tn.esprit.autoloc.web.dto.ClientRequestDto;
+import tn.esprit.autoloc.web.dto.ClientResponseDto;
+import tn.esprit.autoloc.web.mapper.ClientMapper;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ClientServiceImpl implements IClientService {
 
     private final IClientRepository clientRepository;
+    private final ClientMapper clientMapper;
 
     @Override
-    public Client create(Client client) {
-        if (client.getIdClient() != null) {
-            throw new IllegalArgumentException("Un nouveau client ne doit pas avoir d'identifiant");
-        }
-        validateBusinessRules(client);
-        return clientRepository.save(client);
+    public ClientResponseDto create(ClientRequestDto dto) {
+        Client client = clientMapper.toEntity(dto);
+        return clientMapper.toResponse(clientRepository.save(client));
     }
 
     @Override
-    public Client findById(Long id) {
-        return clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Client", id));
+    public ClientResponseDto findById(Long id) {
+        return clientMapper.toResponse(findClientEntity(id));
     }
 
     @Override
-    public List<Client> findAll() {
-        return clientRepository.findAll();
+    public List<ClientResponseDto> findAll() {
+        return clientRepository.findAll().stream().map(clientMapper::toResponse).toList();
     }
 
     @Override
-    public Client update(Long id, Client client) {
-        validateBusinessRules(client);
-
-        Client existant = findById(id);
-        existant.setNom(client.getNom());
-        existant.setPrenom(client.getPrenom());
-        existant.setEmail(client.getEmail());
-        existant.setTelephone(client.getTelephone());
-        existant.setNumPermis(client.getNumPermis());
-        existant.setDateInscription(client.getDateInscription());
-
-        return clientRepository.save(existant);
+    public ClientResponseDto update(Long id, ClientRequestDto dto) {
+        Client existant = findClientEntity(id);
+        existant.setNom(dto.nom());
+        existant.setPrenom(dto.prenom());
+        existant.setEmail(dto.email());
+        existant.setTelephone(dto.telephone());
+        existant.setNumPermis(dto.numPermis());
+        existant.setDateInscription(dto.dateInscription());
+        return clientMapper.toResponse(clientRepository.save(existant));
     }
 
     @Override
@@ -57,29 +54,8 @@ public class ClientServiceImpl implements IClientService {
         clientRepository.deleteById(id);
     }
 
-    private void validateBusinessRules(Client client) {
-        if (isBlank(client.getNom())) {
-            throw new IllegalArgumentException("Le nom du client est obligatoire");
-        }
-        if (isBlank(client.getPrenom())) {
-            throw new IllegalArgumentException("Le prenom du client est obligatoire");
-        }
-        if (isBlank(client.getEmail())) {
-            throw new IllegalArgumentException("L'email du client est obligatoire");
-        }
-        if (isBlank(client.getTelephone())) {
-            throw new IllegalArgumentException("Le telephone du client est obligatoire");
-        }
-        if (isBlank(client.getNumPermis())) {
-            throw new IllegalArgumentException("Le numero de permis du client est obligatoire");
-        }
-        if (client.getDateInscription() == null) {
-            throw new IllegalArgumentException("La date d'inscription du client est obligatoire");
-        }
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
+    private Client findClientEntity(Long id) {
+        return clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client", id));
     }
 }
-

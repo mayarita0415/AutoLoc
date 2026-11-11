@@ -1,51 +1,53 @@
 package tn.esprit.autoloc.service;
 
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tn.esprit.autoloc.domain.Client;
 import tn.esprit.autoloc.domain.Reservation;
+import tn.esprit.autoloc.domain.Vehicule;
 import tn.esprit.autoloc.exception.ResourceNotFoundException;
+import tn.esprit.autoloc.repository.IClientRepository;
 import tn.esprit.autoloc.repository.IReservationRepository;
+import tn.esprit.autoloc.repository.IVehiculeRepository;
+import tn.esprit.autoloc.web.dto.ReservationRequestDto;
+import tn.esprit.autoloc.web.dto.ReservationResponseDto;
+import tn.esprit.autoloc.web.mapper.ReservationMapper;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ReservationServiceImpl implements IReservationService {
 
     private final IReservationRepository reservationRepository;
+    private final IClientRepository clientRepository;
+    private final IVehiculeRepository vehiculeRepository;
+    private final ReservationMapper reservationMapper;
 
     @Override
-    public Reservation create(Reservation reservation) {
-        if (reservation.getIdReservation() != null) {
-            throw new IllegalArgumentException("Une nouvelle reservation ne doit pas avoir d'identifiant");
-        }
-        validateBusinessRules(reservation);
-        return reservationRepository.save(reservation);
+    public ReservationResponseDto create(ReservationRequestDto dto) {
+        validateBusinessRules(dto);
+        Reservation reservation = new Reservation();
+        applyDto(reservation, dto);
+        return reservationMapper.toResponse(reservationRepository.save(reservation));
     }
 
     @Override
-    public Reservation findById(Long id) {
-        return reservationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Reservation", id));
+    public ReservationResponseDto findById(Long id) {
+        return reservationMapper.toResponse(findReservationEntity(id));
     }
 
     @Override
-    public List<Reservation> findAll() {
-        return reservationRepository.findAll();
+    public List<ReservationResponseDto> findAll() {
+        return reservationRepository.findAll().stream().map(reservationMapper::toResponse).toList();
     }
 
     @Override
-    public Reservation update(Long id, Reservation reservation) {
-        validateBusinessRules(reservation);
-
-        Reservation existante = findById(id);
-        existante.setDateDebut(reservation.getDateDebut());
-        existante.setDateFin(reservation.getDateFin());
-        existante.setStatut(reservation.getStatut());
-        existante.setVehicule(reservation.getVehicule());
-        existante.setClient(reservation.getClient());
-
-        return reservationRepository.save(existante);
+    public ReservationResponseDto update(Long id, ReservationRequestDto dto) {
+        validateBusinessRules(dto);
+        Reservation existante = findReservationEntity(id);
+        applyDto(existante, dto);
+        return reservationMapper.toResponse(reservationRepository.save(existante));
     }
 
     @Override
@@ -56,15 +58,32 @@ public class ReservationServiceImpl implements IReservationService {
         reservationRepository.deleteById(id);
     }
 
-    private void validateBusinessRules(Reservation reservation) {
-        if (reservation.getDateDebut() == null || reservation.getDateFin() == null) {
-            throw new IllegalArgumentException("Les dates de reservation sont obligatoires");
-        }
-        if (reservation.getDateFin().isBefore(reservation.getDateDebut())) {
+    private void applyDto(Reservation reservation, ReservationRequestDto dto) {
+        reservation.setDateDebut(dto.dateDebut());
+        reservation.setDateFin(dto.dateFin());
+        reservation.setStatut(dto.statut());
+        reservation.setVehicule(findVehiculeEntity(dto.vehiculeId()));
+        reservation.setClient(findClientEntity(dto.clientId()));
+    }
+
+    private void validateBusinessRules(ReservationRequestDto dto) {
+        if (dto.dateFin().isBefore(dto.dateDebut())) {
             throw new IllegalArgumentException("La date de fin ne peut pas etre anterieure a la date de debut");
         }
-        if (reservation.getStatut() == null) {
-            throw new IllegalArgumentException("Le statut de la reservation est obligatoire");
-        }
+    }
+
+    private Reservation findReservationEntity(Long id) {
+        return reservationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation", id));
+    }
+
+    private Vehicule findVehiculeEntity(Long id) {
+        return vehiculeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Vehicule", id));
+    }
+
+    private Client findClientEntity(Long id) {
+        return clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client", id));
     }
 }

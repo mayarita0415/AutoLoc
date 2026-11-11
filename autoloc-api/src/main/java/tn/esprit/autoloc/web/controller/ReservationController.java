@@ -5,19 +5,13 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-import tn.esprit.autoloc.domain.Reservation;
+import org.springframework.web.bind.annotation.*;
 import tn.esprit.autoloc.service.IReservationService;
+import tn.esprit.autoloc.web.dto.ReservationRequestDto;
+import tn.esprit.autoloc.web.dto.ReservationResponseDto;
 
 import java.util.List;
 
@@ -32,7 +26,7 @@ public class ReservationController {
     @Operation(summary = "Lister toutes les reservations")
     @ApiResponse(responseCode = "200", description = "Liste des reservations recuperee")
     @GetMapping
-    public List<Reservation> findAll() {
+    public List<ReservationResponseDto> findAll() {
         return reservationService.findAll();
     }
 
@@ -42,7 +36,7 @@ public class ReservationController {
             @ApiResponse(responseCode = "404", description = "Reservation introuvable")
     })
     @GetMapping("/{id}")
-    public Reservation findById(@Parameter(description = "Identifiant de la reservation") @PathVariable Long id) {
+    public ReservationResponseDto findById(@Parameter(description = "Identifiant de la reservation") @PathVariable Long id) {
         return reservationService.findById(id);
     }
 
@@ -53,7 +47,7 @@ public class ReservationController {
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Reservation create(@RequestBody Reservation reservation) {
+    public ReservationResponseDto create(@Valid @RequestBody ReservationRequestDto reservation) {
         return reservationService.create(reservation);
     }
 
@@ -64,7 +58,7 @@ public class ReservationController {
             @ApiResponse(responseCode = "404", description = "Reservation introuvable")
     })
     @PutMapping("/{id}")
-    public Reservation update(@PathVariable Long id, @RequestBody Reservation reservation) {
+    public ReservationResponseDto update(@PathVariable Long id, @Valid @RequestBody ReservationRequestDto reservation) {
         return reservationService.update(id, reservation);
     }
 
@@ -79,4 +73,3 @@ public class ReservationController {
         reservationService.deleteById(id);
     }
 }
-

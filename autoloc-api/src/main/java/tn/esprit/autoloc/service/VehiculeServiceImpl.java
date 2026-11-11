@@ -1,55 +1,53 @@
 package tn.esprit.autoloc.service;
 
-import java.math.BigDecimal;
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tn.esprit.autoloc.domain.Agence;
+import tn.esprit.autoloc.domain.Equipement;
 import tn.esprit.autoloc.domain.Vehicule;
 import tn.esprit.autoloc.exception.ResourceNotFoundException;
+import tn.esprit.autoloc.repository.IAgenceRepository;
+import tn.esprit.autoloc.repository.IEquipementRepository;
 import tn.esprit.autoloc.repository.IVehiculeRepository;
+import tn.esprit.autoloc.web.dto.VehiculeRequestDto;
+import tn.esprit.autoloc.web.dto.VehiculeResponseDto;
+import tn.esprit.autoloc.web.mapper.VehiculeMapper;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class VehiculeServiceImpl implements IVehiculeService {
 
     private final IVehiculeRepository vehiculeRepository;
+    private final IAgenceRepository agenceRepository;
+    private final IEquipementRepository equipementRepository;
+    private final VehiculeMapper vehiculeMapper;
 
     @Override
-    public Vehicule create(Vehicule vehicule) {
-        if (vehicule.getIdVehicule() != null) {
-            throw new IllegalArgumentException("Un nouveau vehicule ne doit pas avoir d'identifiant");
-        }
-        validateBusinessRules(vehicule);
-        return vehiculeRepository.save(vehicule);
+    public VehiculeResponseDto create(VehiculeRequestDto dto) {
+        Vehicule vehicule = new Vehicule();
+        applyDto(vehicule, dto);
+        return vehiculeMapper.toResponse(vehiculeRepository.save(vehicule));
     }
 
     @Override
-    public Vehicule findById(Long id) {
-        return vehiculeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Vehicule", id));
+    public VehiculeResponseDto findById(Long id) {
+        return vehiculeMapper.toResponse(findVehiculeEntity(id));
     }
 
     @Override
-    public List<Vehicule> findAll() {
-        return vehiculeRepository.findAll();
+    public List<VehiculeResponseDto> findAll() {
+        return vehiculeRepository.findAll().stream().map(vehiculeMapper::toResponse).toList();
     }
 
     @Override
-    public Vehicule update(Long id, Vehicule vehicule) {
-        validateBusinessRules(vehicule);
-
-        Vehicule existant = findById(id);
-        existant.setImmatriculation(vehicule.getImmatriculation());
-        existant.setMarque(vehicule.getMarque());
-        existant.setModele(vehicule.getModele());
-        existant.setCategorie(vehicule.getCategorie());
-        existant.setTarifJournalier(vehicule.getTarifJournalier());
-        existant.setStatut(vehicule.getStatut());
-        existant.setAgence(vehicule.getAgence());
-        existant.setEquipements(vehicule.getEquipements());
-
-        return vehiculeRepository.save(existant);
+    public VehiculeResponseDto update(Long id, VehiculeRequestDto dto) {
+        Vehicule existant = findVehiculeEntity(id);
+        applyDto(existant, dto);
+        return vehiculeMapper.toResponse(vehiculeRepository.save(existant));
     }
 
     @Override
@@ -60,31 +58,36 @@ public class VehiculeServiceImpl implements IVehiculeService {
         vehiculeRepository.deleteById(id);
     }
 
-    private void validateBusinessRules(Vehicule vehicule) {
-        if (isBlank(vehicule.getImmatriculation())) {
-            throw new IllegalArgumentException("L'immatriculation du vehicule est obligatoire");
-        }
-        if (isBlank(vehicule.getMarque())) {
-            throw new IllegalArgumentException("La marque du vehicule est obligatoire");
-        }
-        if (isBlank(vehicule.getModele())) {
-            throw new IllegalArgumentException("Le modele du vehicule est obligatoire");
-        }
-        if (vehicule.getCategorie() == null) {
-            throw new IllegalArgumentException("La categorie du vehicule est obligatoire");
-        }
-        if (vehicule.getTarifJournalier() == null) {
-            throw new IllegalArgumentException("Le tarif journalier est obligatoire");
-        }
-        if (vehicule.getTarifJournalier().compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Le tarif journalier ne peut pas etre negatif");
-        }
-        if (vehicule.getStatut() == null) {
-            throw new IllegalArgumentException("Le statut du vehicule est obligatoire");
-        }
+    private void applyDto(Vehicule vehicule, VehiculeRequestDto dto) {
+        vehicule.setImmatriculation(dto.immatriculation());
+        vehicule.setMarque(dto.marque());
+        vehicule.setModele(dto.modele());
+        vehicule.setCategorie(dto.categorie());
+        vehicule.setTarifJournalier(dto.tarifJournalier());
+        vehicule.setStatut(dto.statut());
+        vehicule.setAgence(findAgenceEntity(dto.agenceId()));
+        vehicule.setEquipements(findEquipements(dto.equipementIds()));
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
+    private Vehicule findVehiculeEntity(Long id) {
+        return vehiculeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Vehicule", id));
+    }
+
+    private Agence findAgenceEntity(Long id) {
+        return agenceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Agence", id));
+    }
+
+    private Set<Equipement> findEquipements(Set<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new HashSet<>();
+        }
+        return new HashSet<>(ids.stream().map(this::findEquipementEntity).toList());
+    }
+
+    private Equipement findEquipementEntity(Long id) {
+        return equipementRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Equipement", id));
     }
 }

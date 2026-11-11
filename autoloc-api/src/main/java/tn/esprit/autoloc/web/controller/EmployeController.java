@@ -5,19 +5,13 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-import tn.esprit.autoloc.domain.Employe;
+import org.springframework.web.bind.annotation.*;
 import tn.esprit.autoloc.service.IEmployeService;
+import tn.esprit.autoloc.web.dto.EmployeRequestDto;
+import tn.esprit.autoloc.web.dto.EmployeResponseDto;
 
 import java.util.List;
 
@@ -32,7 +26,7 @@ public class EmployeController {
     @Operation(summary = "Lister tous les employes")
     @ApiResponse(responseCode = "200", description = "Liste des employes recuperee")
     @GetMapping
-    public List<Employe> findAll() {
+    public List<EmployeResponseDto> findAll() {
         return employeService.findAll();
     }
 
@@ -42,7 +36,7 @@ public class EmployeController {
             @ApiResponse(responseCode = "404", description = "Employe introuvable")
     })
     @GetMapping("/{id}")
-    public Employe findById(@Parameter(description = "Identifiant de l'employe") @PathVariable Long id) {
+    public EmployeResponseDto findById(@Parameter(description = "Identifiant de l'employe") @PathVariable Long id) {
         return employeService.findById(id);
     }
 
@@ -53,7 +47,7 @@ public class EmployeController {
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Employe create(@RequestBody Employe employe) {
+    public EmployeResponseDto create(@Valid @RequestBody EmployeRequestDto employe) {
         return employeService.create(employe);
     }
 
@@ -64,7 +58,7 @@ public class EmployeController {
             @ApiResponse(responseCode = "404", description = "Employe introuvable")
     })
     @PutMapping("/{id}")
-    public Employe update(@PathVariable Long id, @RequestBody Employe employe) {
+    public EmployeResponseDto update(@PathVariable Long id, @Valid @RequestBody EmployeRequestDto employe) {
         return employeService.update(id, employe);
     }
 
@@ -79,4 +73,3 @@ public class EmployeController {
         employeService.deleteById(id);
     }
 }
-

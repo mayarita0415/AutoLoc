@@ -1,63 +1,54 @@
 package tn.esprit.autoloc.service;
 
-import java.math.BigDecimal;
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tn.esprit.autoloc.domain.Contrat;
+import tn.esprit.autoloc.domain.Paiement;
+import tn.esprit.autoloc.domain.Reservation;
 import tn.esprit.autoloc.exception.ResourceNotFoundException;
 import tn.esprit.autoloc.repository.IContratRepository;
+import tn.esprit.autoloc.repository.IReservationRepository;
+import tn.esprit.autoloc.web.dto.ContratRequestDto;
+import tn.esprit.autoloc.web.dto.ContratResponseDto;
+import tn.esprit.autoloc.web.dto.PaiementCreateDto;
+import tn.esprit.autoloc.web.mapper.ContratMapper;
+import tn.esprit.autoloc.web.mapper.PaiementMapper;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class ContratServiceImpl implements IContratService {
 
     private final IContratRepository contratRepository;
-
+    private final IReservationRepository reservationRepository;
+    private final PaiementMapper paiementMapper;
+    private final ContratMapper contratMapper;
 
     @Override
-    public Contrat create(Contrat contrat) {
-        if (contrat.getIdContrat() != null) {
-            throw new IllegalArgumentException(
-                    "Un nouveau contrat ne doit pas avoir d'identifiant"
-            );
-        }
-
-        validateBusinessRules(contrat);
-
-        if (contrat.getPaiements() != null) {
-            contrat.getPaiements().forEach(paiement ->
-                    paiement.setContrat(contrat)
-            );
-        }
-
-        return contratRepository.save(contrat);
+    public ContratResponseDto create(ContratRequestDto dto) {
+        Contrat contrat = new Contrat();
+        applyDto(contrat, dto, true);
+        return contratMapper.toResponse(contratRepository.save(contrat));
     }
 
     @Override
-    public Contrat findById(Long id) {
-        return contratRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Contrat", id));
+    public ContratResponseDto findById(Long id) {
+        return contratMapper.toResponse(findContratEntity(id));
     }
 
     @Override
-    public List<Contrat> findAll() {
-        return contratRepository.findAll();
+    public List<ContratResponseDto> findAll() {
+        return contratRepository.findAll().stream().map(contratMapper::toResponse).toList();
     }
 
     @Override
-    public Contrat update(Long id, Contrat contrat) {
-        validateBusinessRules(contrat);
-
-        Contrat existant = findById(id);
-        existant.setDateSignature(contrat.getDateSignature());
-        existant.setMontantTotal(contrat.getMontantTotal());
-        existant.setValide(contrat.getValide());
-        existant.setReservation(contrat.getReservation());
-        // Ne pas modifier idContrat ni la collection paiements ici.
-
-        return contratRepository.save(existant);
+    public ContratResponseDto update(Long id, ContratRequestDto dto) {
+        Contrat existant = findContratEntity(id);
+        applyDto(existant, dto, false);
+        return contratMapper.toResponse(contratRepository.save(existant));
     }
 
     @Override
@@ -68,18 +59,41 @@ public class ContratServiceImpl implements IContratService {
         contratRepository.deleteById(id);
     }
 
-    private void validateBusinessRules(Contrat contrat) {
-        if (contrat.getDateSignature() == null) {
-            throw new IllegalArgumentException("La date de signature du contrat est obligatoire");
+    private void applyDto(Contrat contrat, ContratRequestDto dto, boolean includePaiements) {
+        contrat.setDateSignature(dto.dateSignature());
+        contrat.setMontantTotal(dto.montantTotal());
+        contrat.setValide(dto.valide());
+        contrat.setReservation(findReservation(dto.reservationId()));
+
+        if (includePaiements) {
+            contrat.setPaiements(buildPaiements(dto.paiements(), contrat));
         }
-        if (contrat.getMontantTotal() == null) {
-            throw new IllegalArgumentException("Le montant total est obligatoire");
+    }
+
+    private Set<Paiement> buildPaiements(Set<PaiementCreateDto> paiementsDto, Contrat contrat) {
+        if (paiementsDto == null || paiementsDto.isEmpty()) {
+            return new HashSet<>();
         }
-        if (contrat.getMontantTotal().compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Le montant total ne peut pas etre negatif");
+
+        Set<Paiement> paiements = new HashSet<>();
+        for (PaiementCreateDto paiementDto : paiementsDto) {
+            Paiement paiement = paiementMapper.toEntity(paiementDto);
+            paiement.setContrat(contrat);
+            paiements.add(paiement);
         }
-        if (contrat.getValide() == null) {
-            throw new IllegalArgumentException("L'etat de validation du contrat est obligatoire");
+        return paiements;
+    }
+
+    private Reservation findReservation(Long reservationId) {
+        if (reservationId == null) {
+            return null;
         }
+        return reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation", reservationId));
+    }
+
+    private Contrat findContratEntity(Long id) {
+        return contratRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Contrat", id));
     }
 }
